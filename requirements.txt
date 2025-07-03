@@ -1,0 +1,7 @@
+beautifulsoup4
+requests[socks]
+schedule
+pandas
+lxml
+streamlit
+reportlab
