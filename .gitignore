@@ -1,1 +1,9 @@
-./backend/__pycache__
+backend/__pycache__/alert.cpython-312.pyc
+backend/__pycache__/alert.cpython-313.pyc
+backend/__pycache__/export.cpython-312.pyc
+backend/__pycache__/export.cpython-313.pyc
+backend/__pycache__/monitor.cpython-312.pyc
+backend/__pycache__/monitor.cpython-313.pyc
+backend/__pycache__/pdf_report.cpython-313.pyc
+backend/__pycache__/scraper.cpython-312.pyc
+backend/__pycache__/scraper.cpython-313.pyc
