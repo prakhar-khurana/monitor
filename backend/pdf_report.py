@@ -36,4 +36,4 @@ def generate_pdf_report(url, keywords, changes, archive_path):
         y -= 15
 
     c.save()
-    print(f"PDF Report saved to: {"/Users/prakharkhurana/Desktop/acg/dark-web"}")
+    print(f"PDF Report saved to: {"/dark-web"}")
