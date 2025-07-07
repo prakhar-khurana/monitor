@@ -27,10 +27,12 @@ def detect_keywords(content, keywords):
     found_keywords = []
     if not keywords:
         return found_keywords
-    content_lower = str(content).lower()
+    # Use visible text instead of raw HTML
+    soup = BeautifulSoup(content, 'lxml')
+    text_lower = soup.get_text(separator=' ', strip=True).lower()
     for kw in keywords:
         if kw and kw.strip():
-            if kw.strip().lower() in content_lower:
+            if kw.strip().lower() in text_lower:
                 found_keywords.append(kw.strip())
     return list(set(found_keywords))
 
@@ -65,6 +67,8 @@ def monitor_job(url, keywords, section=None):
 
     try:
         content, path = scrape_and_save(url, section)
+        print(f"[Success] Saved: {path}")
+        print(f"Successfully scraped {url} (Title: {page_title})")
         soup = BeautifulSoup(content, 'lxml')
         page_title = soup.title.string if soup.title else url
         print(f"Successfully scraped {url} (Title: {page_title})")
@@ -74,7 +78,7 @@ def monitor_job(url, keywords, section=None):
         snapshot_file = os.path.join(DATA_DIR, f"{hashlib.md5(url.encode()).hexdigest()}_snapshot.html")
         prev_content = ""
         if os.path.exists(snapshot_file):
-            with open(snapshot_file, 'r', encoding='utf-8') as f:
+            with open(snapshot_file, 'r', encoding='utf- 8') as f:
                 prev_content = f.read()
             print(f"Previous snapshot found for {url}: {snapshot_file}")
         else:
@@ -128,15 +132,21 @@ def monitor_job(url, keywords, section=None):
             alert_user(url, found_keywords, alert_message)
             export_to_csv(url, changes, found_keywords, additional_results)
             generate_pdf_report(url, found_keywords, changes, path, additional_results)
-
-        return {
-            "changes": changes,
-            "found_keywords": found_keywords,
-            "additional_results": additional_results,
-            "page_title": page_title,
-            "backlinks": backlinks,
-            "error": None
-        }
+            return {
+                "changes": changes,
+                "found_keywords": found_keywords,
+                "additional_results": additional_results,
+                "page_title": page_title,
+                "backlinks": backlinks,
+                "error": None
+            }
     except Exception as e:
         print(f"Scraping failed for {url}: {e}")
-        return {"error": f"Scraping failed: {e}", "changes": "", "found_keywords": [], "additional_results": [], "page_title": url, "backlinks": []}
+        return {
+            "error": f"Scraping failed: {e}",
+            "changes": "",
+            "found_keywords": [],
+            "additional_results": [],
+            "page_title": url,
+            "backlinks": []
+        }

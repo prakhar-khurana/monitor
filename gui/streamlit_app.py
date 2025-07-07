@@ -2,7 +2,7 @@ import streamlit as st
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+import json
 import sqlite3
 import time
 import requests
@@ -15,6 +15,8 @@ logging.getLogger('streamlit').setLevel(logging.ERROR)
 
 # Database setup
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'urls.db')
+RESULTS_FILE = os.path.join(os.path.dirname(__file__), '..', 'latest_results.json')
+LAST_SCAN_TIME_FILE = os.path.join(os.path.dirname(__file__), '..', 'last_scan_time.txt')
 
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
@@ -28,6 +30,28 @@ def init_db():
 
 # Initialize database
 init_db()
+def run_monitoring_cycle(urls, keywords):
+    results = {}
+    for url in urls:
+        try:
+            result = monitor_job(url, keywords)
+            results[url] = result
+            print(f"Monitoring cycle completed for {url}: {result}")
+        except Exception as e:
+            print(f"Error in monitoring cycle for {url}: {e}")
+            results[url] = {
+                "error": str(e),
+                "changes": "",
+                "found_keywords": [],
+                "additional_results": [],
+                "page_title": url,
+                "backlinks": []
+            }
+    # Save results and last scan time
+    with open(RESULTS_FILE, 'w') as f:
+        json.dump(results, f)
+    with open(LAST_SCAN_TIME_FILE, 'w') as f:
+        f.write(time.ctime())
 
 # --- Page and UI Configuration ---
 st.set_page_config(layout="wide", page_title="Kautilya")
@@ -95,13 +119,19 @@ def display_status_alert(alias, url, status_code, error=None):
 # --- Database and URL Functions ---
 def check_url_status(url):
     try:
+        is_onion = '.onion' in url
         session = requests.session()
-        if url.endswith('.onion'):
-            session.proxies = {'http': 'socks5h://127.0.0.1:9150', 'https': 'socks5h://127.0.0.1:9150'}
         session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/117.0.0.0'
         })
-        res = session.head(url, timeout=10)
+        if is_onion:
+            session.proxies.update({
+                'http': 'socks5h://127.0.0.1:9050',
+                'https': 'socks5h://127.0.0.1:9050'
+            })
+
+        # Use stream=True to avoid loading the whole body
+        res = session.get(url, timeout=90, stream=True)
         return res.status_code, None
     except Exception as e:
         return None, str(e)
@@ -234,7 +264,7 @@ with st.sidebar:
                         scheduler.add_job(
                             lambda: run_monitoring_cycle(selected_urls, keywords),
                             'interval',
-                            seconds=30,
+                            seconds=600,
                             max_instances=10
                         )
                         scheduler.start()
@@ -275,32 +305,52 @@ with st.sidebar:
             else:
                 st.error("Cannot run scan: Some URLs are unreachable.")
 
-# --- Monitoring Cycle ---
-def run_monitoring_cycle(urls, keywords):
-    results = {}
-    for url in urls:
-        try:
-            result = monitor_job(url, keywords)
-            results[url] = result
-            if keywords and result.get("found_keywords"):
-                st.session_state.keyword_hits[url] = st.session_state.keyword_hits.get(url, 0) + len(result["found_keywords"])
-            print(f"Monitoring cycle completed for {url}: {result}")
-        except Exception as e:
-            print(f"Error in monitoring cycle for {url}: {e}")
-            results[url] = {"error": str(e), "changes": "", "found_keywords": [], "additional_results": [], "page_title": url, "backlinks": []}
-    st.session_state.results = results
-    st.session_state.last_scan_time = time.ctime()
-    st.rerun()
-
+# # --- Monitoring Cycle ---
+# def run_monitoring_cycle(urls, keywords):
+#     results = {}
+#     for url in urls:
+#         try:
+#             result = monitor_job(url, keywords)
+#             results[url] = result
+#             if keywords and result.get("found_keywords"):
+#                 st.session_state.keyword_hits[url] = st.session_state.keyword_hits.get(url, 0) + len(result["found_keywords"])
+#             print(f"Monitoring cycle completed for {url}: {result}")
+#         except Exception as e:
+#             print(f"Error in monitoring cycle for {url}: {e}")
+#             results[url] = {"error": str(e), "changes": "", "found_keywords": [], "additional_results": [], "page_title": url, "backlinks": []}
+#     st.session_state.results = results
+#     st.session_state.last_scan_time = time.ctime()
+#     st.rerun()
+last_scan_time = None
+results = {}
+if os.path.exists(LAST_SCAN_TIME_FILE):
+    with open(LAST_SCAN_TIME_FILE, 'r') as f:
+        last_scan_time = f.read()
+if os.path.exists(RESULTS_FILE):
+    with open(RESULTS_FILE, 'r') as f:
+        results = json.load(f)
 # --- Landing Page with Individual Cards ---
 st.header("Monitoring Dashboard")
-if st.session_state.alerts:
-    st.warning(f"Alerts: {', '.join(st.session_state.alerts)}")
-if st.session_state.last_scan_time:
-    st.caption(f"Last scanned on: {st.session_state.last_scan_time}")
+if last_scan_time:
+    st.caption(f"Last scanned on: {last_scan_time}")
 else:
     st.caption("No scans have been run yet.")
 
+if results:
+    for url, result in results.items():
+        alias = next((a for a, u in saved_urls if u == url), url)
+        if result.get("error"):
+            with st.container(border=True):
+                st.error(f"### Error for {alias}\n{result['error']}")
+        else:
+            title = result.get("page_title", alias)
+            display_change_card(result.get("changes", ""), url, title)
+            if keywords:
+                display_keywords_card(result.get("found_keywords", []), url)
+                display_additional_results_card(result.get("additional_results", []), url)
+            display_backlinks_card(result.get("backlinks", []), alias, url)
+else:
+    st.info("Start monitoring or run a manual scan from the sidebar.")
 # Display Status Alerts
 if st.session_state.status_alerts:
     for url, (alias, status_code, error) in st.session_state.status_alerts.items():

@@ -8,7 +8,7 @@ from reportlab.lib import colors
 import html
 import re
 
-REPORTS_DIR = os.path.join(os.path.dirname(__file__), '..', r'/Users/prakharkhurana/Desktop/acg/dark-web/reports')
+REPORTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'reports'))
 
 def sanitize_diff(changes):
     if not changes or not changes.strip():
@@ -33,11 +33,14 @@ def sanitize_diff(changes):
     return '\n'.join(sanitized[:50])
 
 def generate_pdf_report(url, keywords, changes, archive_path, additional_results=None):
+    print(f"Generating PDF report for {url}")
     additional_results = additional_results or []
     os.makedirs(REPORTS_DIR, exist_ok=True)
     
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     report_path = os.path.join(REPORTS_DIR, f"monitoring_report_{timestamp}.pdf")
+    
+    print(f"Attempting to generate PDF report at: {report_path}")
     
     doc = SimpleDocTemplate(report_path, pagesize=A4,
                             rightMargin=72, leftMargin=72,
@@ -61,7 +64,7 @@ def generate_pdf_report(url, keywords, changes, archive_path, additional_results
     ]
     
     tbl = Table(metadata, colWidths=[120, 340])
-    tbl.setStyle(TableStyle([
+    tbl.setStyle(TableStyle([ 
         ('BACKGROUND', (0, 0), (0, -1), colors.grey),
         ('TEXTCOLOR', (0, 0), (0, -1), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),

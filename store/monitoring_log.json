@@ -12,5 +12,21 @@
         "last_keywords": [
             "hello"
         ]
+    },
+    "http://wikiwwwymi5o2dfjvowwwnzw2w5y5o2wgvntrhfrbqtyk55se77k5fqd.onion": {
+        "changes_count": 1,
+        "keywords_count": 13,
+        "last_keywords": [
+            "wiki",
+            "dread"
+        ]
+    },
+    "http://wikiwwwymi5o2dfjvowwwnzw2w5y5o2wgvntrhfrbqtyk55se77k5fqd.onion/index.php?category=ForumsandChats&page=Dread": {
+        "changes_count": 1,
+        "keywords_count": 13,
+        "last_keywords": [
+            "wiki",
+            "dread"
+        ]
     }
 }
