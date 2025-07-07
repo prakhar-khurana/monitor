@@ -5,3 +5,4 @@ pandas
 lxml
 streamlit
 reportlab
+apscheduler
